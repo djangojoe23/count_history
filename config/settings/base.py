@@ -81,7 +81,13 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "count_history_v3.users",
-    # Your stuff: custom apps go here
+    # Non-dataset-specific apps go here
+    "count_history_v3.base",
+    "count_history_v3.query",
+    "count_history_v3.chart",
+    "count_history_v3.table",
+    # Each dataset's app goes here
+    "count_history_v3.humans",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

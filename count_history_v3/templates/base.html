@@ -9,29 +9,41 @@
     <meta name="description" content="Analyze Data Together">
     <meta name="author" content="JCM">
 
-    <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/favicons/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicons/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicons/favicon-16x16.png' %}">
+    <link rel="manifest" href="{% static 'images/favicons/site.webmanifest' %}">
 
     {% block css %}
-    <!-- Latest compiled and minified Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" integrity="sha512-GQGU0fMMi238uA+a/bdWJfpUGKUkBdgfFdgBm72SUQ6BeyWjoY/ton0tEjH+OSH9iP4Dfh+7HM0I9f5eR0L/4w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Your stuff: Third-party CSS libraries go here -->
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
 
-    <!-- This file stores project-specific CSS -->
-    {% compress css %}
-    <link href="{% static 'css/project.css' %}" rel="stylesheet">
-    {% endcompress %}
+      <!-- Your stuff: Third-party CSS libraries go here -->
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" integrity="sha384-OXVF05DQEe311p6ohU11NwlnX08FzMCsyoXzGOaL+83dKAb3qS17yZJxESl8YrJQ" crossorigin="anonymous">
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" integrity="sha384-IrMr0LFnIMa9H6HhC5VVqVuWNEIwspnRLKQc0SUyPj4Cy4s02DiWDZEoJOo5WNK6" crossorigin="anonymous">
+
+      <!-- This file stores project-specific CSS -->
+      {% compress css %}
+        <link href="{% static 'css/app.css' %}" rel="stylesheet">
+        <link href="{% static 'css/project.css' %}" rel="stylesheet">
+      {% endcompress %}
     {% endblock %}
-    <!-- Le javascript
-    ================================================== -->
+
+    <!-- ================================================== -->
+
     {# Placed at the top of the document so pages load faster with defer #}
     {% block javascript %}
       <!-- Bootstrap JS -->
-      <script defer src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.min.js" integrity="sha512-OvBgP9A2JBgiRad/mM36mkzXSXaJE9BEIENnVEmeZdITvwT09xnxLtT4twkCa8m/loMbPHsvPl0T8lRGVBwjlQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+      <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa" crossorigin="anonymous"></script>
+
       <!-- Your stuff: Third-party javascript libraries go here -->
+      <script defer src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha384-vtXRMe3mGCbOeY7l30aIg8H9p3GdeSe4IFlP6G8JMa7o7lXvnz3GFKzPxzJdPfGK" crossorigin="anonymous"></script>
+      <script defer src="https://code.jquery.com/ui/1.13.1/jquery-ui.js" integrity="sha384-KUSBBRKMO05pX3xNidXAX5N1p4iNwntmhHY4iugl7mINOyOXFL4KZWceJtMj7M0A" crossorigin="anonymous"></script>
+      <script defer src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" integrity="sha384-d3UHjPdzJkZuk5H3qKYMLRyWLAQBJbby2yr2Q58hXXtAGF8RSNO9jpLDlKKPv5v3" crossorigin="anonymous"></script>
 
       <!-- place project specific Javascript in this file -->
       {% compress js %}
-      <script defer src="{% static 'js/project.js' %}"></script>
+        <script defer src="{% static 'js/app.js' %}"></script>
+        <script defer src="{% static 'js/project.js' %}"></script>
       {% endcompress %}
 
     {% endblock javascript %}
@@ -39,23 +51,36 @@
   </head>
 
   <body>
+    <header>
+      <nav class="navbar navbar-expand-md navbar-light bg-white absolute-top">
+        <div class="container">
 
-    <div class="mb-1">
-      <nav class="navbar navbar-expand-md navbar-light bg-light">
-        <div class="container-fluid">
-          <button class="navbar-toggler navbar-toggler-right" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <button class="navbar-toggler order-2 order-md-1" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbar-left navbar-right" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
           </button>
-          <a class="navbar-brand" href="{% url 'home' %}">Count History</a>
 
-          <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav mr-auto">
-              <li class="nav-item active">
-                <a class="nav-link" href="{% url 'home' %}">Home <span class="visually-hidden">(current)</span></a>
+          <div class="collapse navbar-collapse order-3 order-md-2" id="navbar-left">
+            <ul class="navbar-nav me-auto">
+              <li class="nav-item">
+                <a class="nav-link" href="">{% translate "About" %}</a>
+{#                <a class="nav-link" href="{% url 'base:about' %}">{% translate "About" %}</a>#}
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="{% url 'about' %}">About</a>
+                <a class="nav-link" href="">{% translate "Analyze" %}</a>
+{#                <a class="nav-link" href="{% url 'base:analyze' %}">{% translate "Analyze" %}</a>#}
               </li>
+              <li class="nav-item">
+                <a class="nav-link" href="">{% translate "Contact" %}</a>
+{#                <a class="nav-link" href="{% url 'base:about' %}">{% translate "Contact" %}</a>#}
+              </li>
+            </ul>
+          </div>
+
+        <a class="navbar-brand mx-auto order-1 order-md-3" href="">Count History</a>
+{#          <a class="navbar-brand mx-auto order-1 order-md-3" href="{% url 'base:home' %}">Count History</a>#}
+
+          <div class="collapse navbar-collapse order-4 order-md-4" id="navbar-right">
+            <ul class="navbar-nav ms-auto">
               {% if request.user.is_authenticated %}
                 <li class="nav-item">
                   {# URL provided by django-allauth/account/urls.py #}
@@ -67,39 +92,96 @@
                 </li>
               {% else %}
                 {% if ACCOUNT_ALLOW_REGISTRATION %}
-              <li class="nav-item">
-                {# URL provided by django-allauth/account/urls.py #}
-                <a id="sign-up-link" class="nav-link" href="{% url 'account_signup' %}">{% translate "Sign Up" %}</a>
-              </li>
-              {% endif %}
+                  <li class="nav-item">
+                    {# URL provided by django-allauth/account/urls.py #}
+                    <a class="nav-link" href="{% url 'account_signup' %}">{% translate "Sign Up" %}</a>
+                  </li>
+                {% endif %}
                 <li class="nav-item">
                   {# URL provided by django-allauth/account/urls.py #}
-                  <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% translate "Sign In" %}</a>
+                  <a class="nav-link" href="{% url 'account_login' %}">{% translate "Sign In" %}</a>
                 </li>
               {% endif %}
             </ul>
+            <form class="form-inline" role="search">
+              <input class="search js-search form-control form-control-rounded me-sm-2" type="text" title="Enter search query here.." placeholder="Search.." aria-label="Search">
+            </form>
           </div>
         </div>
       </nav>
+    </header>
 
+    <main>
+      <div class="container-fluid">
+        <div class="row">
+          {% if has_sidebar %}
+            <div class="col-xl-3">
+              {% block sidebar %}
+
+              {% endblock sidebar %}
+            </div>
+            <div class="col-xl-9">
+          {% else %}
+            <div class="col-md-12">
+          {% endif %}
+              <div class="contentBlock">
+                {% block content %}
+
+                {% endblock content %}
+              </div>
+
+            </div>
+        </div>
+      </div>
+
+    </main>
+
+    <div class="site-newsletter">
+      <div class="container">
+        <div class="text-center">
+          <h3 class="h4 mb-2">Subscribe to our newsletter</h3>
+          <p class="text-muted">Join our monthly newsletter and never miss out on new stories and promotions.</p>
+
+          <div class="row">
+            <div class="col-xs-12 col-sm-9 col-md-7 col-lg-5 ms-auto me-auto">
+              <div class="input-group mb-3 mt-3">
+                <input type="text" class="form-control" placeholder="Email address" aria-label="Email address">
+                <span class="input-group-btn">
+                  <button class="btn btn-secondary" type="button">Subscribe</button>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="container">
+    <footer class="site-footer bg-dark">
+      <div class="container">
 
-      {% if messages %}
-        {% for message in messages %}
-          <div class="alert alert-dismissible {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      {% endif %}
-
-      {% block content %}
-        <p>Use this document as a way to quick start any new project.</p>
-      {% endblock content %}
-
-    </div> <!-- /container -->
+        <ul class="nav justify-content-center">
+          <li class="nav-item">
+            <a class="nav-link" href="#">Privacy policy</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Terms</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Feedback</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Advertise</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Contact</a>
+          </li>
+        </ul>
+        <div class="copy">
+          &copy; Count History 2022<br />
+          All rights reserved
+        </div>
+      </div>
+    </footer>
 
     {% block modal %}{% endblock modal %}
 
