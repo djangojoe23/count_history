@@ -1,17 +1,18 @@
 import calendar
 import sys
+from datetime import date
 from urllib.parse import unquote
 
 import requests
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
-from count_history_v3.humans.models import Human
+from count_history_v3.humans.models import Human, Update
 
 
 class Command(BaseCommand):
     help = "This finds notable humans on various wikipedia pages."
-    max_days_between_updates = 0
+    max_days_between_updates = 7
     log_id = "find_notable_humans: "
     sleep_time = 3
     pages_to_scrape = {
@@ -55,11 +56,6 @@ class Command(BaseCommand):
     # this is meant to be run regularly (once a week?)
     def handle(self, *args, **options):
         self.custom_print("Starting up...", "OKBLUE")
-
-        # Erase all webpage data for each QID
-        self.custom_print("Erasing all found_on records...", "OKBLUE")
-        Human.found_on.through.objects.all()
-        self.custom_print("Erasing all found_on records complete!", "OKBLUE")
 
         # Go through wikipedia looking for notable humans
         for page_title in self.pages_to_scrape:
@@ -141,7 +137,7 @@ class Command(BaseCommand):
 
                         link_start = list_page_text.find("/wiki/", link_end)
 
-        # Get all remaining QIDs who are still not up to date and get updates
+        # TODO: get all remaining QIDs who are still not up to date and get updates
         # assume they are no longer on any notable webpages so leave the found_on blank
 
         call_command("get_human_wikidata", "foo")
@@ -241,6 +237,11 @@ class Command(BaseCommand):
                         )
                     else:
                         entities = wikidata_request.json()["entities"]
+
+                        update_obj, created = Update.objects.get_or_create(
+                            date=date.today(), source=time_page_slug
+                        )
+
                         for potential_human_qid in entities:
                             unknown_title = None
                             potential_human_entities = None
@@ -250,7 +251,7 @@ class Command(BaseCommand):
                             except ValueError:
                                 potential_human_entities = entities[potential_human_qid]
                             if unknown_title:
-                                # try to find a known title and pass the QID into potential_human_qid
+                                # Try to find a known title and pass the QID into potential_human_qid
                                 parameters["titles"] = unknown_title
                                 parameters["normalize"] = ""
                                 normalize_request = requests.get(
@@ -283,11 +284,38 @@ class Command(BaseCommand):
                                         p31[0]["mainsnak"]["datavalue"]["value"]["id"]
                                         == "Q5"
                                     ):
-                                        print(f"human found {potential_human_qid}!")
-                                        # if a human is found but they are already known
-                                        # if they are up to date, update their webpages,
-                                        # if they are not up to date, get an update
-                                        # if a human is found and they are not already known, add them and get data
+                                        human_qid = int(potential_human_qid[1:])
+                                        (
+                                            human_obj,
+                                            created,
+                                        ) = Human.objects.get_or_create(qid=human_qid)
+                                        try:
+                                            most_recent_update = (
+                                                human_obj.updates.all()
+                                                .latest("date")
+                                                .date
+                                            )
+                                            time_since_update = (
+                                                date.today() - most_recent_update
+                                            )
+                                            days_since_update = time_since_update.days
+                                        except Update.DoesNotExist:
+                                            days_since_update = (
+                                                self.max_days_between_updates + 1
+                                            )
+
+                                        if (
+                                            days_since_update
+                                            < self.max_days_between_updates
+                                        ):
+                                            pass
+                                        else:
+                                            pass
+                                            # update wikipedia model
+                                            # update wikidata model
+                                            #   which will result in updating lifedate model and
+                                            #   nonhuman model and place model
+                                            # add update_obj to human
                                     else:
                                         pass  # not a human
                                 except KeyError:

@@ -8,16 +8,14 @@ from django.db import models
 # Create your models here.
 class Update(models.Model):
     date = models.DateField()
+    source = models.SlugField(max_length=200)
 
-
-class Webpage(models.Model):
-    slug = models.SlugField(primary_key=True, max_length=200)
+    class Meta:
+        unique_together = ["date", "source"]
 
 
 class Human(models.Model):
     qid = models.PositiveBigIntegerField(primary_key=True, default=0)
-    found_on = models.ManyToManyField(Webpage, blank=True)
-    found_on_log = models.JSONField(default=dict, null=False, blank=False)
     updates = models.ManyToManyField(Update)
 
 
