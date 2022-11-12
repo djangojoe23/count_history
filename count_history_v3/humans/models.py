@@ -77,8 +77,7 @@ class Wikipedia(models.Model):
         GOOD = "g", "Good"
         UNGRADED = "u", "Ungraded"
 
-    qid = models.OneToOneField(Human, on_delete=models.CASCADE, primary_key=True)
-    enwikititle = models.SlugField(max_length=200, blank=True, null=True)
+    title = models.SlugField(primary_key=True, max_length=200)
     pagesize = models.PositiveIntegerField(blank=True, null=True)
     recentviews = models.PositiveIntegerField(blank=True, null=True)
     grade = models.CharField(max_length=1, choices=Grades.choices)
@@ -88,7 +87,7 @@ class Wikipedia(models.Model):
 
 
 class Wikidata(models.Model):
-    qid = models.OneToOneField(Human, on_delete=models.CASCADE, primary_key=True)
+    human = models.OneToOneField(Human, on_delete=models.CASCADE, primary_key=True)
     label = models.CharField(max_length=200, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     birthdate = models.ManyToManyField(Lifedate, related_name="birthdate")
