@@ -1,17 +1,19 @@
 import calendar
 import sys
+import time
 from datetime import date, timedelta
 from urllib.parse import unquote
 
 import requests
 from django.core.management.base import BaseCommand
-from django.db.models import Max
+from django.db.models import Max, Min, Q
 
 from count_history_v3.base.models import Parameter
 from count_history_v3.humans.models import (
     Human,
     Lifedate,
     Nonhuman,
+    Place,
     Update,
     Wikidata,
     Wikipedia,
@@ -65,104 +67,139 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.custom_print("Starting up...", "OKBLUE")
 
-        # Go through wikipedia looking for notable humans
-        for page_title in self.pages_to_scrape:
-            pages_to_scrape = self.pages_to_scrape[page_title]
-            if pages_to_scrape == 0:
-                pass  # Well, then don't scrape any pages
-            else:
-                parameters = {
-                    "action": "parse",
-                    "format": "json",
-                    "page": page_title,
-                }
-                request = requests.get(
-                    "https://en.wikipedia.org/w/api.php",
-                    headers={"User-Agent": self.requests_user_agent},
-                    params=parameters,
-                    timeout=self.request_timeout,
-                )
-                if request.status_code != 200:
-                    self.custom_print(
-                        f"status {request.status_code} accessing {request.url}",
-                        "ERROR",
-                    )
+        oldest_update = Human.objects.aggregate(Min("updates__date"))[
+            "updates__date__min"
+        ]
+        if oldest_update and oldest_update >= date.today() - timedelta(
+            days=self.max_days_between_updates
+        ):
+            self.custom_print(
+                f"All humans have been updated within the past {self.max_days_between_updates} days. "
+                f"Skipping to nonhumans and places.",
+                "OKBLUE",
+            )
+        else:
+            # Go through wikipedia looking for notable humans
+            for page_title in self.pages_to_scrape:
+                pages_to_scrape = self.pages_to_scrape[page_title]
+                if pages_to_scrape == 0:
+                    pass  # Well, then don't scrape any pages
                 else:
-                    list_page_text = request.json()["parse"]["text"]["*"]
-                    link_start = list_page_text.find("/wiki/", 0)
-                    link_count = 0
-                    while link_start > -1 and link_count < pages_to_scrape:
-                        link_end = list_page_text.find('"', link_start)
-                        link_slug = list_page_text[
-                            link_start + 6 : link_end  # noqa: E203
-                        ]
+                    parameters = {
+                        "action": "parse",
+                        "format": "json",
+                        "page": page_title,
+                    }
+                    request = requests.get(
+                        "https://en.wikipedia.org/w/api.php",
+                        headers={"User-Agent": self.requests_user_agent},
+                        params=parameters,
+                        timeout=self.request_timeout,
+                    )
+                    if request.status_code != 200:
+                        self.custom_print(
+                            f"status {request.status_code} accessing {request.url}",
+                            "ERROR",
+                        )
+                    else:
+                        list_page_text = request.json()["parse"]["text"]["*"]
+                        link_start = list_page_text.find("/wiki/", 0)
+                        link_count = 0
+                        while link_start > -1 and link_count < pages_to_scrape:
+                            link_end = list_page_text.find('"', link_start)
+                            link_slug = list_page_text[
+                                link_start + 6 : link_end  # noqa: E203
+                            ]
 
-                        # I am looking at the 3 pages "List_of_days_of_the_year", "List_of_years", and
-                        # "List_of_decades,_centuries,_and_millennia" for links to more specific time periods
-                        # To find those more specific time period pages, a link found on one of those 3 pages must meet
-                        # cond_1 and cond_2 or it won't lead to a more specific time period page
-                        cond_1 = False
-                        cond_2 = False
-                        if page_title == "List_of_days_of_the_year":
-                            cond_1 = link_slug.split("_")[0] in calendar.month_name
-                            cond_2 = link_slug.split("_")[1].isnumeric()
-                        elif page_title == "List_of_years":
-                            if link_slug.isnumeric():
-                                cond_1 = True
-                                cond_2 = True
-                            else:
-                                link_slug_split = link_slug.split("_")
-                                if len(link_slug_split) == 2:
-                                    cond_1 = link_slug_split[0].isnumeric()
-                                    cond_2 = link_slug_split[1] == "BC"
+                            # I am looking at the 3 pages "List_of_days_of_the_year", "List_of_years", and
+                            # "List_of_decades,_centuries,_and_millennia" for links to more specific time periods
+                            # To find those more specific time period pages, a link found on one of those 3 pages
+                            # must meet cond_1 and cond_2 or it won't lead to a more specific time period page
+                            cond_1 = False
+                            cond_2 = False
+                            if page_title == "List_of_days_of_the_year":
+                                cond_1 = link_slug.split("_")[0] in calendar.month_name
+                                cond_2 = link_slug.split("_")[1].isnumeric()
+                            elif page_title == "List_of_years":
+                                if link_slug.isnumeric():
+                                    cond_1 = True
+                                    cond_2 = True
+                                else:
+                                    link_slug_split = link_slug.split("_")
+                                    if len(link_slug_split) == 2:
+                                        cond_1 = link_slug_split[0].isnumeric()
+                                        cond_2 = link_slug_split[1] == "BC"
+                                        if cond_1 and cond_2:
+                                            pass
+                                        else:
+                                            cond_1 = link_slug_split[1].isnumeric()
+                                            cond_2 = link_slug_split[0] == "AD"
+                            elif (
+                                page_title
+                                == "List_of_decades,_centuries,_and_millennia"
+                            ):
+                                if (
+                                    "millennium" in link_slug
+                                    or "century" in link_slug
+                                    or "decade" in link_slug
+                                ):
+                                    cond_1 = True
+                                    cond_2 = True
+                                else:
+                                    cond_1 = link_slug.endswith("BC")
+                                    cond_2 = link_slug[:-4].isnumeric()
                                     if cond_1 and cond_2:
                                         pass
                                     else:
-                                        cond_1 = link_slug_split[1].isnumeric()
-                                        cond_2 = link_slug_split[0] == "AD"
-                        elif page_title == "List_of_decades,_centuries,_and_millennia":
-                            if (
-                                "millennium" in link_slug
-                                or "century" in link_slug
-                                or "decade" in link_slug
-                            ):
-                                cond_1 = True
-                                cond_2 = True
+                                        cond_1 = link_slug.endswith("s")
+                                        cond_2 = link_slug[:-1].isnumeric()
                             else:
-                                cond_1 = link_slug.endswith("BC")
-                                cond_2 = link_slug[:-4].isnumeric()
-                                if cond_1 and cond_2:
-                                    pass
-                                else:
-                                    cond_1 = link_slug.endswith("s")
-                                    cond_2 = link_slug[:-1].isnumeric()
-                        else:
-                            pass  # not one of the 3 pages I am starting with
+                                pass  # not one of the 3 pages I am starting with
 
-                        if cond_1 and cond_2:
-                            self.parse_time_page(link_slug)
-                            link_count += 1
+                            if cond_1 and cond_2:
+                                self.parse_time_page(link_slug)
+                                link_count += 1
 
-                        link_start = list_page_text.find("/wiki/", link_end)
+                            link_start = list_page_text.find("/wiki/", link_end)
 
-        # get all remaining humans who are still not up to date and get updates
-        humans = list(
-            Human.objects.annotate(most_recent_update=Max("updates__date")).filter(
-                most_recent_update__gte=date.today()
-                - timedelta(days=self.max_days_between_updates)
+            # get all remaining humans who are still not up to date and get updates
+            humans = list(
+                Human.objects.annotate(most_recent_update=Max("updates__date")).filter(
+                    most_recent_update__lte=date.today()
+                    - timedelta(days=self.max_days_between_updates)
+                )
             )
-        )
-        if humans:
-            batch = []
-            for human in humans:
-                if len(batch) == 50 or human == humans[-1]:
-                    self.batch_update_humans(batch, "not_listed")
-                else:
-                    batch.append(human.wikidata.wikipedia.title)
+            if humans:
+                batch = []
+                for human in humans:
+                    if len(batch) == 50 or human == humans[-1]:
+                        self.batch_update_humans(batch, "not_listed")
+                        batch = []
+                    else:
+                        batch.append(human.wikidata.wikipedia.title)
 
         # TODO: update nonhuman model and place model
+        nonhuman_qid_batch = []
+        nonhuman_list = list(
+            Nonhuman.objects.filter(
+                Q(lastupdate__isnull=True)
+                | Q(
+                    lastupdate__lte=date.today()
+                    - timedelta(days=self.max_days_between_updates)
+                )
+            )
+        )
+        for nonhuman_obj in nonhuman_list:
+            nonhuman_qid_batch.append(f"Q{nonhuman_obj.qid}")
+            if len(nonhuman_qid_batch) == 50 or nonhuman_obj == nonhuman_list[-1]:
+                self.batch_update_nonhuman(nonhuman_qid_batch)
+                nonhuman_qid_batch = []
 
-        self.custom_print(f"{self.log_id}: The end!", "OKBLUE")
+        self.custom_print(
+            "Finished for now! Waiting a minute before restarting.",
+            "OKBLUE",
+        )
+        time.sleep(self.sleep_time)
 
     def parse_time_page(self, time_page_slug):
         self.custom_print(f"Parsing {time_page_slug}", "OKBLUE")
@@ -606,3 +643,161 @@ class Command(BaseCommand):
                             pass  # not a human
                     except KeyError:
                         pass  # definitely not a human
+
+    def batch_update_nonhuman(self, qid_batch):
+        parameters = {
+            "action": "wbgetentities",
+            "sites": "enwiki",
+            "languages": "en",
+            "props": "labels|descriptions|claims|sitelinks",
+            "ids": "|".join(qid_batch),
+            "format": "json",
+        }
+        request = requests.get(
+            "https://www.wikidata.org/w/api.php",
+            headers={"User-Agent": self.requests_user_agent},
+            params=parameters,
+            timeout=self.request_timeout,
+        )
+        self.custom_print(
+            f"Looking for nonhumans at {request.url} ...",
+            "OKBLUE",
+        )
+
+        status_code = request.status_code
+        if status_code != 200:
+            self.custom_print(
+                f"status {request.status_code} accessing {request.url}",
+                "WARNING",
+            )
+        else:
+            json_obj = request.json()
+            if json_obj:
+                entities = None
+                try:
+                    entities = json_obj["entities"]
+                except KeyError:
+                    self.custom_print(
+                        "Invalid QID! Status Code: {} from {}".format(
+                            status_code, request.url
+                        ),
+                        "ERROR",
+                    )
+
+                if not entities:
+                    pass
+                else:
+                    for key in entities:
+                        try:
+                            nonhuman_obj = Nonhuman.objects.get(qid=int(key[1:]))
+                        except Nonhuman.DoesNotExist:
+                            nonhuman_obj = None
+
+                        if not nonhuman_obj:
+                            pass
+                        else:
+                            try:
+                                nonhuman_obj.label = entities[key]["labels"]["en"][
+                                    "value"
+                                ]
+                            except KeyError:
+                                pass  # no label
+
+                            try:
+                                nonhuman_obj.description = entities[key][
+                                    "descriptions"
+                                ]["en"]["value"]
+                            except KeyError:
+                                pass  # no description
+
+                            nonhuman_obj.lastupdate = date.today()
+                            nonhuman_obj.save()
+
+                            nonhuman_is_place = False
+                            for param in nonhuman_obj.parameter.all():
+                                if param.label in [
+                                    "birthplace",
+                                    "deathplace",
+                                    "burialplace",
+                                ]:
+                                    nonhuman_is_place = True
+                                    break
+                                else:
+                                    pass
+
+                            geo_coords = None
+                            try:
+                                geo_coords = entities[key]["claims"]["P625"]
+                                nonhuman_is_place = True
+                            except KeyError:
+                                pass
+
+                            if nonhuman_is_place:
+                                # create a place object for this nonhuman object
+                                place_obj, created = Place.objects.get_or_create(
+                                    nonhuman=nonhuman_obj
+                                )
+
+                                if not geo_coords:
+                                    pass
+                                else:
+                                    try:
+                                        place_obj.latitude = geo_coords[0]["mainsnak"][
+                                            "datavalue"
+                                        ]["value"]["latitude"]
+                                        place_obj.longitude = geo_coords[0]["mainsnak"][
+                                            "datavalue"
+                                        ]["value"]["longitude"]
+                                        place_obj.precision = geo_coords[0]["mainsnak"][
+                                            "datavalue"
+                                        ]["value"]["precision"]
+                                    except KeyError:
+                                        pass  # print(f"{key} has P625 but then a key error??")
+
+                                place_obj.save()
+
+                                for p_code in ["P17", "P30"]:
+                                    try:
+                                        country_or_continent_data = entities[key][
+                                            "claims"
+                                        ][p_code]
+                                        if (
+                                            country_or_continent_data[0]["mainsnak"][
+                                                "snaktype"
+                                            ]
+                                            == "novalue"
+                                        ):
+                                            country_or_continent_data = None
+                                    except KeyError:
+                                        country_or_continent_data = None
+
+                                    if country_or_continent_data:
+                                        for item in country_or_continent_data:
+                                            qid_int = int(
+                                                item["mainsnak"]["datavalue"]["value"][
+                                                    "id"
+                                                ][1:]
+                                            )
+                                            (
+                                                country_or_continent_obj,
+                                                created,
+                                            ) = Nonhuman.objects.get_or_create(
+                                                qid=qid_int
+                                            )
+                                            if p_code == "P17":
+                                                place_obj.country.add(
+                                                    country_or_continent_obj
+                                                )
+                                            elif p_code == "P30":
+                                                place_obj.continent.add(
+                                                    country_or_continent_obj
+                                                )
+
+                                            place_obj.save()
+
+                                            (
+                                                new_place_obj,
+                                                created,
+                                            ) = Place.objects.get_or_create(
+                                                nonhuman=country_or_continent_obj
+                                            )

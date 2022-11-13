@@ -48,7 +48,6 @@ class Place(models.Model):
         Nonhuman,
         related_name="continent",
     )
-    lastupdate = models.DateField(null=True, blank=True)
 
 
 class Lifedate(models.Model):
