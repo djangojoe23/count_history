@@ -180,8 +180,9 @@ class Command(BaseCommand):
                 batch = []
                 for human in humans:
                     if len(batch) == 50 or human == humans[-1]:
-                        self.batch_update_humans(batch, "not_listed")
-                        batch = []
+                        if batch:
+                            self.batch_update_humans(batch, "not_listed")
+                            batch = []
                     else:
                         batch.append(human.wikidata.wikipedia.title)
 
@@ -273,8 +274,9 @@ class Command(BaseCommand):
                     len(link_query_batch) == 50
                     or time_page_text.find("/wiki/", link_on_page_end) == -1
                 ):
-                    self.batch_update_humans(link_query_batch, time_page_slug)
-                    link_query_batch = []
+                    if link_query_batch:
+                        self.batch_update_humans(link_query_batch, time_page_slug)
+                        link_query_batch = []
                 link_on_page_start = time_page_text.find("/wiki/", link_on_page_end)
 
     def batch_update_humans(self, link_query_batch, time_page_slug):
