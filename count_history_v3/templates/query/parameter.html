@@ -1,0 +1,27 @@
+{% load query_templatetags notable_humans_templatetags %}
+{% get_unique_id as card_div_id %}
+
+<article class="paramArticle d-flex card mb-2" id="{{ card_div_id }}">
+    <div class="card-body">
+      <div class="d-flex flex-row align-items-center justify-content-between mb-2">
+        <select id="{{ card_div_id }}ParameterSelect" class="form-select parameter-select select-two" data-placeholder="Choose..." aria-label="Parameter Dropdown Select">
+          {% for p in parameters %}
+            <option value="{{ p.label }}">{{p.title}}</option>
+          {% endfor %}
+        </select>
+        <button id="{{ card_div_id }}ParameterRemove" type="button" class="btn-close" aria-label="Remove Parameter"></button>
+      </div>
+      <div class="d-flex flex-column">
+        <label for="{{ card_div_id }}ValueSelect">
+        includes
+          <select id="{{ card_div_id }}ValueSelect" class="form-select select-two" data-placeholder="" aria-hidden="true" multiple="">
+            {% if val_ids_chosen %}
+              {% for v in val_ids_chosen|get_sublist:parameter_count %}
+                <option value="{{ v }}">{{ v|get_value_label }}</option>
+              {% endfor %}
+            {% endif %}
+          </select>
+        </label>
+      </div>
+    </div>
+</article>

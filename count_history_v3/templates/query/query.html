@@ -1,0 +1,92 @@
+{% load base_templatetags %}
+
+<aside class="sidebar">
+    <article class="card mb-2">
+      <div class="card-body">
+        <label for="datasetSelect">What dataset do you want to analyze?
+          <select id="datasetSelect" class="form-select form-select-sm" aria-label="Dataset Dropdown Select" data-placeholder="Choose..." style="width: 100%;">
+            {% for ds in dataset_options %}
+              <option value={{ ds.label }}>{{ ds.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <div id="chartSelectDiv">
+          <label for="chartSelect">What type of chart do you want to use?
+            <select id="chartSelect" class="form-select form-select-sm" aria-label="Chart Dropdown Select" data-placeholder="Choose..." style="width: 100%;">
+                {% include "query/chart_options.html"%}
+            </select>
+          </label>
+        </div>
+
+        <div id="countSelectDiv">
+          <label for="countSelect">What do you want to count?
+            <select id="countSelect" class="form-select form-select-sm" aria-label="Count Dropdown Select" data-placeholder="Choose..." style="width: 100%;">
+                {% include "query/count_options.html"%}
+            </select>
+          </label>
+        </div>
+
+      </div>
+    </article>
+
+    <div class="card mb-2">
+      <div class="card-body">
+        <div class="accordion" id="accordionExample">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingOne">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                Query
+              </button>
+            </h2>
+            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
+                <div class="accordion-body">
+                  <div id="addParameterButtonDiv">
+                    <article class="d-flex card mb-2">
+                      <div class="card-body">
+                          <div class="d-flex justify-content-center">
+                              <button type="button" id="addParameterButton" class="btn btn-primary mb-2">Add Parameter</button>
+                          </div>
+                      </div>
+                    </article>
+                </div>
+                <div id="queryParameters">
+                  {% for param in param_order %}
+                    {% include "query/parameter.html" with parameter_count=param_order|get_item_count:forloop.counter0 val_ids_chosen=param_value_dict|get_dict_value:param %}
+                  {% endfor %}
+                </div>
+                <div class="chartPreferences">
+                  {% include "chart/preferences.html" %}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingTwo">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                Visitor Log
+              </button>
+            </h2>
+            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
+              <div class="accordion-body">
+                Include visitor log html
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingThree">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                Discussion
+              </button>
+            </h2>
+            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
+              <div class="accordion-body">
+                Include discussion html
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </aside>

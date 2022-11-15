@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load static i18n compress %}
+
+{% block javascript %}
+
+  {{ block.super }}
+  <script defer src="https://cdn.amcharts.com/lib/5/index.js"></script>
+  <script defer src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+  <script src="https://cdn.amcharts.com/lib/5/map.js"></script>
+  <script src="https://cdn.amcharts.com/lib/5/geodata/continentsHigh.js"></script>
+  <script src="https://cdn.amcharts.com/lib/5/geodata/worldLow.js"></script>
+  <script defer src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+  <script defer src="https://cdn.amcharts.com/lib/5/themes/Material.js"></script>
+  <script defer src="{% static 'js/query.js' %}"></script>
+  <script defer src="{% static 'js/chart.js' %}"></script>
+  <script defer src="{% static 'js/chart/line.js' %}"></script>
+  <script defer src="{% static 'js/chart/map.js' %}"></script>
+
+{% endblock javascript %}
+
+{% block sidebar %}
+  {% include "query/query.html" %}
+{% endblock sidebar%}
+
+{% block content %}
+  {#    this template also includes messages#}
+  {% include "chart/chart-titles.html" %}
+
+  <div id="chartVisualDiv">
+    <div class="row">
+      <div class="col">
+        <h1 id="chartTitle">
+
+        </h1>
+        <small id="chartSubtitle">
+
+        </small>
+    </div>
+  </div>
+  <div class="row me-2 mb-3">
+    <div id="chartVisual">
+
+    </div>
+  </div>
+
+  </div>
+  {% include "table/table.html" %}
+{% endblock %}
+
+{% block inline_javascript %}
+  {{ block.super }}
+  <script>
+      let datasetLabel = "{{ dataset|safe }}"; //label of the selected dataset
+      let chartType = "{{ chart|safe }}"; //label of the selected chart type
+      let chartTotalPref = "{{ chart_total|safe }}"
+      let counting = "{{ count|safe }}"; //label of the count_option
+      let paramOrder = {{ json_param_order|safe }}; //list of the valid parameters in the order they appear in the URL
+      let paramValuesDict = {{ json_param_value_dict|safe }}; //dictionary of the selected valid parameters and the valid values
+      let chartRoot = null
+  </script>
+{% endblock inline_javascript %}

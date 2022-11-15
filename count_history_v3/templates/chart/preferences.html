@@ -1,0 +1,11 @@
+{% load base_templatetags %}
+
+{% if chart_preferences %}
+  <h5>Chart Preferences</h5>
+  {% for option in  chart_preferences|get_dict_value:'totals'|get_dict_value:'options_order' %}
+    <div class="form-check">
+      <input class="form-check-input" type="radio" name="chartTotalsOptions" id="{{ option }}Option" value={{ option }}>
+      <label class="form-check-label" for="{{ options }}Option" style="font-weight:normal;">{{ chart_preferences|get_dict_value:'totals'|get_dict_value:option }}</label>
+    </div>
+  {% endfor %}
+{% endif %}

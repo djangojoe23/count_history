@@ -1,0 +1,7 @@
+<div id="chartTitlesDiv">
+  {% include "base/messages.html" %}
+  {{ chart_title|json_script:'jsChartTitle'}}
+  {{ chart_subtitle|json_script:'jsChartSubtitle'}}
+  {{ chart_x_title|json_script:'jsChartXtitle'}}
+  {{ chart_y_title|json_script:'jsChartYtitle'}}
+</div>

@@ -1,8 +1,7 @@
-# from collections import Counter
+from collections import Counter
 
 from django.db import models
-
-# from django.db.models import F, Max, Q
+from django.db.models import F, Max, Q
 
 
 # Create your models here.
@@ -18,6 +17,165 @@ class Human(models.Model):
     qid = models.PositiveBigIntegerField(primary_key=True, default=0)
     updates = models.ManyToManyField(Update)
 
+    @classmethod
+    def get_chart_titles(
+        cls, query_dict, parameter_titles_dict, counting_label, chart_type
+    ):
+        title = ""
+        subtitle = ""
+        x_title = ""
+        y_title = ""
+        if chart_type == "line":
+            title = f"Total {counting_label} Over Time"
+            x_title = "Year"
+            y_title = counting_label
+        elif chart_type == "map":
+            title = f"{counting_label}"
+
+        if query_dict:
+            subtitle = "Whose "
+            all_parameters = list(query_dict.keys())
+            for parameter in all_parameters:
+                if len(all_parameters) > 1 and all_parameters.index(parameter) != 0:
+                    subtitle += " AND "
+                subtitle += f"<strong><em>{parameter_titles_dict[parameter]}</em></strong> includes "
+                for value_list in query_dict[parameter]:
+                    if (
+                        len(value_list) > 1
+                        and query_dict[parameter].index(value_list) != 0
+                    ):
+                        subtitle += " AND "
+                    for value in value_list:
+                        if (
+                            len(value_list) > 1
+                            and value_list.index(value) == len(value_list) - 1
+                        ):
+                            subtitle += " OR "
+                        subtitle += f"<em>{Nonhuman.objects.get(qid=value).label}</em>"
+                        if (
+                            len(value_list) != 2
+                            and value_list.index(value) < len(value_list) - 1
+                        ):
+                            subtitle += ", "
+                    if value_list != query_dict[parameter][-1]:
+                        subtitle += " AND "
+
+        return title, subtitle, x_title, y_title
+
+    @classmethod
+    def get_all_line_data(cls, counting_label):
+        all_data_queryset = None
+
+        if "births" in counting_label.split("|") or "deaths" in counting_label.split(
+            "|"
+        ):
+            q_filter = Q()
+            for d in counting_label.split("|"):
+                q_filter |= Q((f"{d[:-1]}date__isnull", False))
+            all_data_queryset = Wikidata.objects.filter(q_filter)
+        elif counting_label == "dataset":
+            all_data_queryset = Wikidata.objects.all()
+
+        return all_data_queryset
+
+    @classmethod
+    def get_all_map_data(cls, counting_label):
+        all_data_queryset = None
+
+        if counting_label == "places":
+            all_data_queryset = Wikidata.objects.filter(
+                (
+                    Q(birthdate__isnull=False)
+                    & Q(birthplace__place__longitude__isnull=False)
+                    & Q(birthplace__place__latitude__isnull=False)
+                )
+                | (
+                    Q(deathdate__isnull=False)
+                    & Q(deathplace__place__longitude__isnull=False)
+                    & Q(deathplace__place__latitude__isnull=False)
+                )
+                | (
+                    Q(deathdate__isnull=False)
+                    & Q(burialplace__place__longitude__isnull=False)
+                    & Q(burialplace__place__latitude__isnull=False)
+                )
+            )
+
+        return all_data_queryset
+
+    @classmethod
+    def get_q_filter(cls, qid_list, parameter_label):
+        q_filter = Q()
+        for qid in qid_list:
+            place_type = None
+            if "continent" in parameter_label:
+                place_type = "continent"
+            elif "country" in parameter_label:
+                place_type = "country"
+
+            if place_type:
+                q_filter |= Q(
+                    (
+                        f"{parameter_label.split('_')[0]}place__place__{place_type}__qid",
+                        qid,
+                    )
+                )
+            else:
+                q_filter |= Q((f"{parameter_label}__qid", qid))
+
+        return q_filter
+
+    @classmethod
+    def get_line_chart_data(cls, queried_queryset, counting_label):
+        totals_per_time_data = {}
+        # print(filtered_queryset.get(qid=152824).birthdate.first().year)
+        if "births" in counting_label.split("|") or "deaths" in counting_label.split(
+            "|"
+        ):
+            for d in counting_label.split("|"):
+                all_dates_by_qid = queried_queryset.filter(
+                    **{f"{d[:-1]}date__isnull": False}
+                ).values_list(
+                    "qid",
+                    f"{d[:-1]}date__year",
+                )
+                all_years = list(zip(*set(all_dates_by_qid)))[1]
+                totals_per_time_data[d] = Counter(all_years)
+        elif counting_label == "dataset":
+            pass  # TODO
+
+        return totals_per_time_data
+
+    @classmethod
+    def get_map_chart_data(cls, queried_queryset, counting_label):
+        time_map_data = {}
+        date_type = counting_label[:-1]
+        if counting_label == "burials":
+            date_type = "death"
+
+        if counting_label in ["births", "deaths", "burials"]:
+            time_map_data = (
+                queried_queryset.alias(
+                    best_date=Max(f"{date_type}date__precision"),
+                    best_place=Max(f"{counting_label[:-1]}place__place__precision"),
+                )
+                .filter(**{f"{date_type}date__precision": F("best_date")})
+                .filter(
+                    **{f"{counting_label[:-1]}place__place__precision": F("best_place")}
+                )
+                .annotate(
+                    title=F("label"),
+                    year=F(f"{date_type}date__year"),
+                    longitude=F(f"{counting_label[:-1]}place__place__longitude"),
+                    latitude=F(f"{counting_label[:-1]}place__place__latitude"),
+                )
+                .values("title", "year", "longitude", "latitude")
+            )
+        elif counting_label == "places":
+            pass  # TODO
+
+        return list(time_map_data)
+
 
 class Nonhuman(models.Model):
     qid = models.PositiveBigIntegerField(primary_key=True, default=0)
@@ -25,6 +183,48 @@ class Nonhuman(models.Model):
     description = models.TextField(blank=True, null=True)
     lastupdate = models.DateField(null=True, blank=True)
     parameter = models.ManyToManyField("base.Parameter", related_name="parameter")
+
+    @classmethod
+    def is_value_valid(cls, value_qid, parameter_label):
+        return Nonhuman.objects.get(
+            qid=value_qid, parameter__label=parameter_label
+        ).exists()
+
+    @classmethod
+    def search_parameter_values(cls, search_str, parameter_label):
+        other_place_params = [
+            "birth_country",
+            "birth_continent",
+            "death_country",
+            "death_continent",
+            "burial_country",
+            "burial_continent",
+        ]
+        if parameter_label in other_place_params:
+            event = parameter_label.split("_")[0]
+            place = parameter_label.split("_")[1]
+            results = (
+                Nonhuman.objects.filter(parameter__label=f"{event}place")
+                .filter(**{f"place__{place}__label__istartswith": search_str})
+                .order_by(f"place__{place}__label")
+                .distinct(f"place__{place}__label")
+                .annotate(
+                    id=models.F(f"place__{place}__qid"),
+                    text=models.F(f"place__{place}__label"),
+                )
+                .values("id", "text")
+            )
+        else:
+            results = (
+                Nonhuman.objects.filter(parameter__label=parameter_label)
+                .filter(label__istartswith=search_str)
+                .order_by("label")
+                .distinct("label")
+                .annotate(id=models.F("qid"), text=models.F("label"))
+                .values("id", "text")
+            )
+
+        return list(results)
 
 
 class Place(models.Model):
